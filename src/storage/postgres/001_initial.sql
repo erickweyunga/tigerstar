@@ -70,6 +70,3 @@ CREATE INDEX IF NOT EXISTS idx_postings_account ON postings(account_id, created_
 CREATE INDEX IF NOT EXISTS idx_postings_transfer ON postings(transfer_id)
     INCLUDE (account_id, posting_type, amount);
 
--- timeouts for safety
-ALTER DATABASE CURRENT_DATABASE() SET statement_timeout = '30s';
-ALTER DATABASE CURRENT_DATABASE() SET idle_in_transaction_session_timeout = '60s';
