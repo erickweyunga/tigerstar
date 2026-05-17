@@ -1,10 +1,12 @@
 [project]
 name = "tigerstar"
 version = "0.1.0"
-description = "Double-entry ledger engine backed by Firestore"
+description = "Double-entry ledger engine"
 requires-python = ">=3.13"
 dependencies = [
     "firebase-admin>=6.0",
+    "psycopg[binary]>=3.1",
+    "psycopg-pool>=3.1",
 ]
 
 [tool.pyright]

@@ -2,14 +2,16 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 
+from src.storage.base import StorageBase
 from src.ledgers.model import Ledger
 from src.accounts.model import Account
 from src.transfers.model import Transfer
 from src.transfers.posting import Posting
 from src.core.types import AccountType, AccountFlags, TransferCode, TransferFlags, PostingType
+from src.core.exceptions import AccountNotFound
 
 
-class FirestoreStorage:
+class FirestoreStorage(StorageBase):
 
     def __init__(self, credentials_path: str, database_id: str = "default"):
         if not firebase_admin._apps:
@@ -19,73 +21,154 @@ class FirestoreStorage:
         self.db = firestore.client(database_id=database_id)
 
     @property
-    def ledgers(self):
+    def _ledgers(self):
         return self.db.collection("ledgers")
 
     @property
-    def accounts(self):
+    def _accounts(self):
         return self.db.collection("accounts")
 
     @property
-    def transfers(self):
+    def _transfers(self):
         return self.db.collection("transfers")
 
     @property
-    def postings(self):
+    def _postings(self):
         return self.db.collection("postings")
 
-    # --- ledgers ---
+    # --- interface ---
 
     def save_ledger(self, ledger: Ledger):
-        self.ledgers.document(ledger.id).set(
-            self._serialize_ledger(ledger)
-        )
+        self._ledgers.document(ledger.id).set(self._serialize_ledger(ledger))
 
     def get_ledger(self, ledger_id: str) -> Ledger | None:
-        doc = self.ledgers.document(ledger_id).get()
+        doc = self._ledgers.document(ledger_id).get()
         if not doc.exists:
             return None
         return self._deserialize_ledger(doc.to_dict())
 
-    # --- accounts ---
-
     def save_account(self, account: Account):
-        self.accounts.document(account.id).set(
-            self._serialize_account(account)
-        )
+        self._accounts.document(account.id).set(self._serialize_account(account))
+
+    def save_accounts_batch(self, accounts: list[Account]):
+        batch = self.db.batch()
+        for account in accounts:
+            ref = self._accounts.document(account.id)
+            batch.set(ref, self._serialize_account(account))
+        batch.commit()
 
     def get_account(self, account_id: str) -> Account | None:
-        doc = self.accounts.document(account_id).get()
+        doc = self._accounts.document(account_id).get()
         if not doc.exists:
             return None
         return self._deserialize_account(doc.to_dict())
 
-    # --- transfers ---
+    def get_accounts_batch(self, account_ids: list[str]) -> dict[str, Account]:
+        if not account_ids:
+            return {}
+        refs = [self._accounts.document(aid) for aid in account_ids]
+        docs = self.db.get_all(refs)
+        result = {}
+        for doc in docs:
+            if doc.exists:
+                result[doc.id] = self._deserialize_account(doc.to_dict())
+        return result
 
     def save_transfer(self, transfer: Transfer):
-        self.transfers.document(transfer.id).set(
-            self._serialize_transfer(transfer)
-        )
+        self._transfers.document(transfer.id).set(self._serialize_transfer(transfer))
 
     def get_transfer(self, transfer_id: str) -> Transfer | None:
-        doc = self.transfers.document(transfer_id).get()
+        doc = self._transfers.document(transfer_id).get()
         if not doc.exists:
             return None
         return self._deserialize_transfer(doc.to_dict())
 
-    # --- postings ---
-
     def save_posting(self, posting: Posting):
-        self.postings.document(posting.id).set(
-            self._serialize_posting(posting)
-        )
+        self._postings.document(posting.id).set(self._serialize_posting(posting))
 
     def get_postings_for_transfer(self, transfer_id: str) -> list[Posting]:
         docs = (
-            self.postings
+            self._postings
             .where(filter=FieldFilter("transfer_id", "==", transfer_id))
             .stream()
         )
+        return [self._deserialize_posting(doc.to_dict()) for doc in docs]
+
+    def execute_transfer(self, transfers, account_ids, pending_ids, process):
+        transaction = self.db.transaction()
+
+        @firestore.transactional
+        def execute(transaction):
+            pending_transfers = {}
+            if pending_ids:
+                refs = [self._transfers.document(pid) for pid in pending_ids]
+                docs = self.db.get_all(refs, transaction=transaction)
+                for doc in docs:
+                    if not doc.exists:
+                        raise ValueError("Pending transfer not found")
+                    pt = self._deserialize_transfer(doc.to_dict())
+                    pending_transfers[pt.id] = pt
+                    account_ids.append(pt.debit_account_id)
+                    account_ids.append(pt.credit_account_id)
+
+            unique_ids = list(set(account_ids))
+            account_refs = {aid: self._accounts.document(aid) for aid in unique_ids}
+            accounts = {}
+            if account_refs:
+                docs = self.db.get_all(list(account_refs.values()), transaction=transaction)
+                for doc in docs:
+                    if not doc.exists:
+                        raise AccountNotFound(doc.id)
+                    accounts[doc.id] = self._deserialize_account(doc.to_dict())
+
+            results, updated_accounts, postings = process(accounts, pending_transfers)
+
+            for aid, account in updated_accounts.items():
+                transaction.set(account_refs[aid], self._serialize_account(account))
+
+            for result in results:
+                transaction.set(
+                    self._transfers.document(result.id),
+                    self._serialize_transfer(result),
+                )
+            for posting in postings:
+                transaction.set(
+                    self._postings.document(posting.id),
+                    self._serialize_posting(posting),
+                )
+
+            return results
+
+        return execute(transaction)
+
+    def query_accounts_by_ledger(self, ledger_id: str) -> list[Account]:
+        docs = (
+            self._accounts
+            .where(filter=FieldFilter("ledger_id", "==", ledger_id))
+            .stream()
+        )
+        return [self._deserialize_account(doc.to_dict()) for doc in docs]
+
+    def query_transfers_by_ledger(self, ledger_id: str) -> list[Transfer]:
+        docs = (
+            self._transfers
+            .where(filter=FieldFilter("ledger_id", "==", ledger_id))
+            .order_by("created_at")
+            .stream()
+        )
+        return [self._deserialize_transfer(doc.to_dict()) for doc in docs]
+
+    def query_postings_by_account(self, account_id: str) -> list[Posting]:
+        docs = (
+            self._postings
+            .where(filter=FieldFilter("account_id", "==", account_id))
+            .order_by("created_at")
+            .stream()
+        )
+        return [self._deserialize_posting(doc.to_dict()) for doc in docs]
+
+    def query_postings_all(self) -> list[Posting]:
+        docs = self._postings.order_by("created_at").stream()
         return [self._deserialize_posting(doc.to_dict()) for doc in docs]
 
     # --- serialization ---

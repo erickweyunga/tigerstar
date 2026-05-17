@@ -2,7 +2,7 @@ from src.core import AccountType, AccountFlags, TransferCode, TransferFlags, Pos
 from src.ledgers import Ledger
 from src.accounts import Account
 from src.transfers import Transfer, Posting
-from src.storage import FirestoreStorage
+from src.storage import FirestoreStorage, PostgresStorage
 from src.engine import TigerStar
 
 __all__ = [
@@ -16,5 +16,6 @@ __all__ = [
     "Transfer",
     "Posting",
     "FirestoreStorage",
+    "PostgresStorage",
     "TigerStar",
 ]

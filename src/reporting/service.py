@@ -1,5 +1,3 @@
-from google.cloud.firestore_v1.base_query import FieldFilter
-
 from src.core.types import AccountType
 
 
@@ -9,11 +7,7 @@ class ReportingService:
         self.storage = storage
 
     def trial_balance(self, ledger_id: str) -> dict:
-        """
-        Trial balance: sum of all debits must equal sum of all credits.
-        Returns per-account debits/credits and totals.
-        """
-        accounts = self._get_accounts_for_ledger(ledger_id)
+        accounts = self.storage.query_accounts_by_ledger(ledger_id)
 
         rows = []
         total_debits = 0
@@ -38,11 +32,7 @@ class ReportingService:
         }
 
     def balance_sheet(self, ledger_id: str) -> dict:
-        """
-        Balance sheet: Assets = Liabilities + Equity + Income - Expenses.
-        Groups accounts by type and shows balances.
-        """
-        accounts = self._get_accounts_for_ledger(ledger_id)
+        accounts = self.storage.query_accounts_by_ledger(ledger_id)
 
         assets = []
         liabilities = []
@@ -81,30 +71,13 @@ class ReportingService:
         }
 
     def general_ledger(self, ledger_id: str, account_id: str | None = None) -> list[dict]:
-        """
-        General ledger: all postings for a ledger, optionally filtered by account.
-        Returns chronological list of postings with transfer details.
-        """
         if account_id:
-            posting_docs = (
-                self.storage.postings
-                .where(filter=FieldFilter("account_id", "==", account_id))
-                .order_by("created_at")
-                .stream()
-            )
+            postings = self.storage.query_postings_by_account(account_id)
         else:
-            posting_docs = (
-                self.storage.postings
-                .order_by("created_at")
-                .stream()
-            )
+            postings = self.storage.query_postings_all()
 
         entries = []
-        for doc in posting_docs:
-            data = doc.to_dict()
-            posting = self.storage._deserialize_posting(data)
-
-            # get transfer details
+        for posting in postings:
             transfer = self.storage.get_transfer(posting.transfer_id)
             if transfer and transfer.ledger_id != ledger_id:
                 continue
@@ -121,11 +94,3 @@ class ReportingService:
             })
 
         return entries
-
-    def _get_accounts_for_ledger(self, ledger_id: str) -> list:
-        docs = (
-            self.storage.accounts
-            .where(filter=FieldFilter("ledger_id", "==", ledger_id))
-            .stream()
-        )
-        return [self.storage._deserialize_account(doc.to_dict()) for doc in docs]

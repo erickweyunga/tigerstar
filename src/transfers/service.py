@@ -1,7 +1,5 @@
 from dataclasses import replace
 
-from firebase_admin import firestore
-
 from src.transfers.model import Transfer
 from src.transfers.posting import Posting
 from src.core.types import PostingType
@@ -23,52 +21,7 @@ class TransferService:
         if not transfers:
             raise ValueError("Must provide at least one transfer")
 
-        transaction = self.storage.db.transaction()
-
-        @firestore.transactional
-        def execute(transaction):
-            # phase 1: collect all refs needed
-            account_ids = set()
-            pending_refs = {}
-
-            for transfer in transfers:
-                if transfer.flags.post_pending_transfer or transfer.flags.void_pending_transfer:
-                    if not transfer.pending_id:
-                        raise ValueError("post/void pending requires pending_id")
-                    pending_refs[transfer.pending_id] = self.storage.transfers.document(transfer.pending_id)
-                else:
-                    account_ids.add(transfer.debit_account_id)
-                    account_ids.add(transfer.credit_account_id)
-
-            # phase 2: batch read pending transfers (single round-trip)
-            pending_transfers = {}
-            if pending_refs:
-                pending_docs = self.storage.db.get_all(
-                    list(pending_refs.values()), transaction=transaction
-                )
-                for doc in pending_docs:
-                    if not doc.exists:
-                        raise ValueError(f"Pending transfer not found")
-                    pt = self.storage._deserialize_transfer(doc.to_dict())
-                    pending_transfers[pt.id] = pt
-                    account_ids.add(pt.debit_account_id)
-                    account_ids.add(pt.credit_account_id)
-
-            # phase 3: batch read all accounts (single round-trip)
-            account_refs = {
-                aid: self.storage.accounts.document(aid) for aid in account_ids
-            }
-            accounts = {}
-            if account_refs:
-                account_docs = self.storage.db.get_all(
-                    list(account_refs.values()), transaction=transaction
-                )
-                for doc in account_docs:
-                    if not doc.exists:
-                        raise AccountNotFound(doc.id)
-                    accounts[doc.id] = self.storage._deserialize_account(doc.to_dict())
-
-            # phase 4: validate and compute all balance changes in memory
+        def process(accounts: dict, pending_transfers: dict) -> tuple:
             results = []
             postings = []
 
@@ -96,27 +49,32 @@ class TransferService:
                     amount=result.amount,
                 ))
 
-            # phase 5: write everything (one commit)
-            for aid, account in accounts.items():
-                transaction.set(account_refs[aid], self.storage._serialize_account(account))
+            return results, accounts, postings
 
-            for result in results:
-                transaction.set(
-                    self.storage.transfers.document(result.id),
-                    self.storage._serialize_transfer(result),
-                )
-            for posting in postings:
-                transaction.set(
-                    self.storage.postings.document(posting.id),
-                    self.storage._serialize_posting(posting),
-                )
+        account_ids = set()
+        pending_ids = []
 
-            return results
+        for transfer in transfers:
+            if transfer.flags.post_pending_transfer or transfer.flags.void_pending_transfer:
+                if not transfer.pending_id:
+                    raise ValueError("post/void pending requires pending_id")
+                pending_ids.append(transfer.pending_id)
+            else:
+                account_ids.add(transfer.debit_account_id)
+                account_ids.add(transfer.credit_account_id)
 
-        return execute(transaction)
+        for transfer in transfers:
+            if not (transfer.flags.post_pending_transfer or transfer.flags.void_pending_transfer):
+                self._validate_ledger(transfer)
+
+        return self.storage.execute_transfer(
+            transfers=transfers,
+            account_ids=list(account_ids),
+            pending_ids=pending_ids,
+            process=process,
+        )
 
     def _apply_single_phase(self, transfer: Transfer, accounts: dict) -> Transfer:
-        self._validate_ledger(transfer)
         debit = accounts[transfer.debit_account_id]
         credit = accounts[transfer.credit_account_id]
 
@@ -142,7 +100,6 @@ class TransferService:
         return transfer
 
     def _apply_pending(self, transfer: Transfer, accounts: dict) -> Transfer:
-        self._validate_ledger(transfer)
         debit = accounts[transfer.debit_account_id]
         credit = accounts[transfer.credit_account_id]
 
