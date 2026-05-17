@@ -1,9 +1,9 @@
 from dataclasses import replace
 
-from src.transfers.model import Transfer
-from src.transfers.posting import Posting
-from src.core.types import PostingType
-from src.core.exceptions import (
+from tigerstar.transfers.model import Transfer
+from tigerstar.transfers.posting import Posting
+from tigerstar.core.types import PostingType
+from tigerstar.core.exceptions import (
     AccountNotFound,
     LedgerNotFound,
     InsufficientFunds,

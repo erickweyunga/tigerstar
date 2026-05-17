@@ -1,8 +1,8 @@
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-from src.core.types import AccountType, AccountFlags
-from src.core.identity import generate_id
+from tigerstar.core.types import AccountType, AccountFlags
+from tigerstar.core.identity import generate_id
 
 
 @dataclass(frozen=True)

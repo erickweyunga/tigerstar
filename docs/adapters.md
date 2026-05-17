@@ -12,7 +12,7 @@ TigerStar uses a storage adapter pattern. The engine doesn't care which database
 ## Firestore Adapter
 
 ```python
-from src import TigerStar, FirestoreStorage
+from tigerstar import TigerStar, FirestoreStorage
 
 storage = FirestoreStorage(
     credentials_path="path/to/firebase-adminsdk.json",
@@ -44,7 +44,7 @@ engine = TigerStar(storage=storage)
 ## PostgreSQL Adapter
 
 ```python
-from src import TigerStar, PostgresStorage
+from tigerstar import TigerStar, PostgresStorage
 
 storage = PostgresStorage(
     dsn="postgresql://user:password@localhost:5432/dbname",
@@ -99,7 +99,7 @@ storage.migrate()
 
 ```python
 import psycopg
-from src.storage.postgres import run_migrations
+from tigerstar.storage.postgres import run_migrations
 
 conn = psycopg.connect("postgresql://user:pass@localhost/otta", autocommit=True)
 run_migrations(conn)
@@ -137,7 +137,7 @@ Optimized for ledger workloads:
 Implement `StorageBase`:
 
 ```python
-from src.storage.base import StorageBase
+from tigerstar.storage.base import StorageBase
 
 class MyStorage(StorageBase):
 

@@ -1,10 +1,10 @@
-from src.ledgers import Ledger
-from src.ledgers.service import LedgerService
-from src.accounts import Account
-from src.accounts.service import AccountService
-from src.transfers import Transfer
-from src.transfers.service import TransferService
-from src.reporting.service import ReportingService
+from tigerstar.ledgers import Ledger
+from tigerstar.ledgers.service import LedgerService
+from tigerstar.accounts import Account
+from tigerstar.accounts.service import AccountService
+from tigerstar.transfers import Transfer
+from tigerstar.transfers.service import TransferService
+from tigerstar.reporting.service import ReportingService
 
 
 class TigerStar:

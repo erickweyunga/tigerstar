@@ -1,4 +1,4 @@
-from src.core.types import AccountType
+from tigerstar.core.types import AccountType
 
 
 class ReportingService:

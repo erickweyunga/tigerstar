@@ -16,7 +16,9 @@ A double-entry ledger engine with pluggable storage backends.
 ## Install
 
 ```bash
-pip install tigerstar
+pip install tigerstar[postgres]    # PostgreSQL only
+pip install tigerstar[firestore]   # Firestore only
+pip install tigerstar[all]         # both backends
 ```
 
 ## Quick Start
@@ -24,7 +26,7 @@ pip install tigerstar
 ### With Firestore
 
 ```python
-from src import TigerStar, FirestoreStorage
+from tigerstar import TigerStar, FirestoreStorage
 
 storage = FirestoreStorage(credentials_path="path/to/firebase-adminsdk.json")
 engine = TigerStar(storage=storage)
@@ -33,7 +35,7 @@ engine = TigerStar(storage=storage)
 ### With PostgreSQL
 
 ```python
-from src import TigerStar, PostgresStorage
+from tigerstar import TigerStar, PostgresStorage
 
 storage = PostgresStorage(dsn="postgresql://user:pass@localhost:5432/dbname")
 storage.migrate()
@@ -43,7 +45,7 @@ engine = TigerStar(storage=storage)
 ### Create a ledger and move money
 
 ```python
-from src import Ledger, Account, AccountType, AccountFlags, Transfer, TransferCode
+from tigerstar import Ledger, Account, AccountType, AccountFlags, Transfer, TransferCode
 
 ledger = Ledger(currency="TZS", precision=0, max_transfer_amount=10_000_000)
 engine.create_ledger(ledger)

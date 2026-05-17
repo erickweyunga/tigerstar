@@ -2,6 +2,9 @@ __pycache__/
 *.py[cod]
 .idea/
 .env
+.venv/
 env/
 *.json
 uv.lock
+dist/
+*.egg-info/

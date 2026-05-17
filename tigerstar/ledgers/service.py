@@ -1,4 +1,4 @@
-from src.ledgers.model import Ledger
+from tigerstar.ledgers.model import Ledger
 
 
 class LedgerService:

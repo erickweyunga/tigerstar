@@ -1,14 +1,40 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "tigerstar"
 version = "0.1.0"
-description = "Double-entry ledger engine"
-requires-python = ">=3.13"
-dependencies = [
-    "firebase-admin>=6.0",
-    "psycopg[binary]>=3.1",
-    "psycopg-pool>=3.1",
-    "python-dotenv>=1.0",
+description = "Double-entry ledger engine with pluggable storage backends"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+authors = [
+    { name = "Eric Kweyunga", email = "maverickweyunga@gmail.com" },
 ]
+keywords = ["ledger", "double-entry", "accounting", "fintech", "payments"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business :: Financial :: Accounting",
+]
+dependencies = []
+
+[project.optional-dependencies]
+firestore = ["firebase-admin>=6.0"]
+postgres = ["psycopg[binary]>=3.1", "psycopg-pool>=3.1"]
+all = ["firebase-admin>=6.0", "psycopg[binary]>=3.1", "psycopg-pool>=3.1"]
+
+[project.urls]
+Repository = "https://github.com/erickweyunga/tigerstar"
+Documentation = "https://github.com/erickweyunga/tigerstar/tree/main/docs"
+
+[tool.hatch.build.targets.wheel]
+packages = ["tigerstar"]
 
 [tool.pyright]
-include = ["src"]
+include = ["tigerstar"]

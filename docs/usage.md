@@ -3,7 +3,7 @@
 ## Setup
 
 ```python
-from src import (
+from tigerstar import (
     TigerStar,
     FirestoreStorage,
     Ledger,
@@ -342,7 +342,7 @@ entries = engine.reporting.general_ledger(ledger.id, account_id=user.id)
 ## Error Handling
 
 ```python
-from src.core.exceptions import (
+from tigerstar.core.exceptions import (
     InsufficientFunds,
     AccountNotFound,
     LedgerNotFound,

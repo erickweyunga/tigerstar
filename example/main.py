@@ -1,9 +1,9 @@
 import os
 from dotenv import load_dotenv
 
-from src import TigerStar, PostgresStorage
-from src import Ledger, Account, AccountType, AccountFlags
-from src import Transfer, TransferCode
+from tigerstar import TigerStar, PostgresStorage
+from tigerstar import Ledger, Account, AccountType, AccountFlags
+from tigerstar import Transfer, TransferCode
 
 load_dotenv()
 

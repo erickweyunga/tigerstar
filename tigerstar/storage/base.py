@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
 
-from src.ledgers.model import Ledger
-from src.accounts.model import Account
-from src.transfers.model import Transfer
-from src.transfers.posting import Posting
+from tigerstar.ledgers.model import Ledger
+from tigerstar.accounts.model import Account
+from tigerstar.transfers.model import Transfer
+from tigerstar.transfers.posting import Posting
 
 
 class StorageBase(ABC):

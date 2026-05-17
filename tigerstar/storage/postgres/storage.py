@@ -2,14 +2,14 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 
-from src.storage.base import StorageBase
-from src.storage.postgres.migrations import run_migrations
-from src.ledgers.model import Ledger
-from src.accounts.model import Account
-from src.transfers.model import Transfer
-from src.transfers.posting import Posting
-from src.core.types import AccountType, AccountFlags, TransferCode, TransferFlags, PostingType
-from src.core.exceptions import AccountNotFound
+from tigerstar.storage.base import StorageBase
+from tigerstar.storage.postgres.migrations import run_migrations
+from tigerstar.ledgers.model import Ledger
+from tigerstar.accounts.model import Account
+from tigerstar.transfers.model import Transfer
+from tigerstar.transfers.posting import Posting
+from tigerstar.core.types import AccountType, AccountFlags, TransferCode, TransferFlags, PostingType
+from tigerstar.core.exceptions import AccountNotFound
 
 
 class PostgresStorage(StorageBase):

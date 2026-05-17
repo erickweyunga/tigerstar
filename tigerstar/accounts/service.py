@@ -1,5 +1,5 @@
-from src.accounts.model import Account
-from src.core.exceptions import LedgerNotFound
+from tigerstar.accounts.model import Account
+from tigerstar.core.exceptions import LedgerNotFound
 
 
 class AccountService:
