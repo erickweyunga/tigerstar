@@ -1,6 +1,6 @@
 # TigerStar
 
-A double-entry ledger engine backed by Google Cloud Firestore.
+A double-entry ledger engine with pluggable storage backends.
 
 ## Features
 
@@ -10,31 +10,44 @@ A double-entry ledger engine backed by Google Cloud Firestore.
 - **Balance constraints** — prevent overdrafts with account flags
 - **Multi-currency** — separate ledgers per currency with configurable precision
 - **Financial reporting** — trial balance, balance sheet, general ledger
-- **Concurrent-safe** — Firestore transactions serialize access to shared accounts
+- **Storage adapters** — swap between Firestore and PostgreSQL without changing application code
+- **Concurrent-safe** — row-level locking (Postgres) or optimistic transactions (Firestore)
+
+## Install
+
+```bash
+pip install tigerstar
+```
 
 ## Quick Start
 
+### With Firestore
+
 ```python
-from src import (
-    TigerStar,
-    FirestoreStorage,
-    Ledger,
-    Account,
-    AccountType,
-    AccountFlags,
-    Transfer,
-    TransferCode,
-    TransferFlags,
-)
+from src import TigerStar, FirestoreStorage
 
 storage = FirestoreStorage(credentials_path="path/to/firebase-adminsdk.json")
 engine = TigerStar(storage=storage)
+```
 
-# create a ledger
+### With PostgreSQL
+
+```python
+from src import TigerStar, PostgresStorage
+
+storage = PostgresStorage(dsn="postgresql://user:pass@localhost:5432/dbname")
+storage.migrate()
+engine = TigerStar(storage=storage)
+```
+
+### Create a ledger and move money
+
+```python
+from src import Ledger, Account, AccountType, AccountFlags, Transfer, TransferCode
+
 ledger = Ledger(currency="TZS", precision=0, max_transfer_amount=10_000_000)
 engine.create_ledger(ledger)
 
-# create accounts
 cash = Account(ledger_id=ledger.id, code=AccountType.ASSET)
 user = Account(
     ledger_id=ledger.id,
@@ -43,7 +56,6 @@ user = Account(
 )
 engine.create_accounts([cash, user])
 
-# deposit
 engine.create_transfers([
     Transfer(
         debit_account_id=cash.id,
@@ -55,27 +67,16 @@ engine.create_transfers([
 ])
 ```
 
-## Project Structure
+## Storage Adapters
 
-```
-src/
-  core/         types, exceptions, ID generation
-  ledgers/      ledger model and service
-  accounts/     account model and service
-  transfers/    transfer model, postings, service
-  storage/      Firestore persistence layer
-  reporting/    trial balance, balance sheet, general ledger
-  engine.py     TigerStar facade
-docs/
-  usage.md      full usage guide
-```
+| Adapter | Database | Best For |
+|---------|----------|----------|
+| `FirestoreStorage` | Google Cloud Firestore | Serverless, zero-ops, auto-scaling |
+| `PostgresStorage` | PostgreSQL | Financial-grade ACID, SQL flexibility, cost control |
+
+Both adapters implement the same interface — swap one for the other with zero application changes. See [docs/adapters.md](docs/adapters.md) for connection pooling, migrations, and writing custom adapters.
 
 ## Documentation
 
-See [docs/usage.md](docs/usage.md) for the full usage guide covering:
-
-- Ledger and account setup
-- Simple and two-phase transfers
-- Linked transfers and fee splitting
-- P2P payments, corrections, currency exchange
-- Reporting and error handling
+- [Usage Guide](docs/usage.md) — ledgers, accounts, transfers, reporting
+- [Storage Adapters](docs/adapters.md) — setup, configuration, custom adapters
