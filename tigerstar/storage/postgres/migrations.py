@@ -13,7 +13,7 @@ def run_migrations(conn):
         """)
 
         cur.execute("SELECT version FROM schema_migrations")
-        applied = {row[0] for row in cur.fetchall()}
+        applied = {row["version"] for row in cur.fetchall()}
 
         sql_files = sorted(MIGRATIONS_DIR.glob("*.sql"))
         for sql_file in sql_files:

@@ -2,8 +2,18 @@ from tigerstar.core import AccountType, AccountFlags, TransferCode, TransferFlag
 from tigerstar.ledgers import Ledger
 from tigerstar.accounts import Account
 from tigerstar.transfers import Transfer, Posting
-from tigerstar.storage import FirestoreStorage, PostgresStorage
 from tigerstar.engine import TigerStar
+
+
+def __getattr__(name):
+    if name == "FirestoreStorage":
+        from tigerstar.storage.firestore import FirestoreStorage
+        return FirestoreStorage
+    if name == "PostgresStorage":
+        from tigerstar.storage.postgres import PostgresStorage
+        return PostgresStorage
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 __all__ = [
     "AccountType",
