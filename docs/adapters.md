@@ -108,6 +108,31 @@ conn.close()
 
 Migrations are versioned. Each `.sql` file runs once — tracked in a `schema_migrations` table. To add a new migration, create a new file like `002_add_column.sql` in the `src/storage/postgres/` folder.
 
+### Shared Database with Alembic
+
+If your application uses the same PostgreSQL database for both TigerStar and your own tables (managed by Alembic), exclude TigerStar tables from autogeneration so Alembic doesn't try to drop them:
+
+```python
+# alembic/env.py
+
+EXCLUDE_TABLES = {"ledgers", "accounts", "transfers", "postings", "schema_migrations"}
+
+
+def include_object(object, name, type_, reflected, compare_to):
+    if type_ == "table" and name in EXCLUDE_TABLES:
+        return False
+    return True
+```
+
+Then pass it to both offline and online context:
+
+```python
+context.configure(
+    ...,
+    include_object=include_object,
+)
+```
+
 ### Concurrency
 
 - Uses `SELECT ... FOR UPDATE` with deterministic lock ordering
